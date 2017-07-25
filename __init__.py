@@ -93,6 +93,11 @@ class HomeAssistantSkill(MycroftSkill):
         self.__build_lighting_intent()
         self.__build_sensor_intent()
         self.__build_automation_intent()
+        self.__build_lock_intent()
+
+    def __build_lock_intent(self):
+        intent = IntentBuilder("LockIntent").require("LockActionKeyword").require("Action").require("Entity").build()
+        self.register_intent(intent, self.handle_lock_intent)
 
     def __build_lighting_intent(self):
         intent = IntentBuilder("LightingIntent").require("LightActionKeyword").require("Action").require("Entity").build()
@@ -107,6 +112,30 @@ class HomeAssistantSkill(MycroftSkill):
         intent = IntentBuilder("SensorIntent").require("SensorStatusKeyword").require("Entity").build()
         # TODO - Locks, Temperature, Identity location
         self.register_intent(intent, self.handle_sensor_intent)
+
+    def handle_lock_intent(self, message):
+        entity = message.data["Entity"]
+        action = message.data["Action"]
+        LOGGER.debug("Entity: %s" % entity)
+        LOGGER.debug("Action: %s" % action)
+        ha_entity = self.ha.find_entity(entity, ['cover', 'lock'])
+        if ha_entity is None:
+            self.speak_dialog('homeassistant.device.unknown', data={"dev_name": entity})
+            return
+        entity_id = ha_entity['id']
+        ha_data = {'entity_id': entity_id}
+        dialog_data = {
+            'dev_name': ha_entity['dev_name'],
+            'action': service + 'ed'
+        }
+        domain = 'cover' if 'cover' in entity_id else 'lock'
+        if action == 'open':
+            service = 'open' if 'cover' in entity_id else 'unlock'
+        elif action == 'close':
+            service = 'close' if 'cover' in entity_id else 'lock'
+        self.ha.execute_service(domain, service, ha_data)
+        self.speak_dialog('homeassistant.lock.on', data=dialog_entity)
+
 
     def handle_lighting_intent(self, message):
         entity = message.data["Entity"]

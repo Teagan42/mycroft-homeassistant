@@ -1,0 +1,2 @@
+(?<Action>unlock|open) (the)? (?<Entity>.*)
+(?<Action>lock|close|secure) (the)? (?<Entity>.*)
